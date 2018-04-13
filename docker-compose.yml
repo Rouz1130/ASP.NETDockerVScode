@@ -34,3 +34,12 @@ services:
     volumes: 
       - ./services/jobs.api/bin/pub/:/app
     container_name: jobs.api   
+
+    sql.data:
+   image: mssql-linux
+   build:
+     context: ./Database
+     dockerfile: Dockerfile
+   ports:
+      - "5433:1433"
+   container_name: mssql-linux
