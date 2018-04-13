@@ -21,11 +21,13 @@ namespace Jobs.Api
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
+        public IServiceProvider ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddScoped<IJobRepository>(c => new JobRepository(Configuration["ConnectionString"]));
 
-                builder.Register(c =>
+            var builder = new ContainerBuilder();
+            builder.Register(c =>
                 {
                     return Bus.Factory.CreateUsingRabbitMq(sbc =>
                     {
@@ -49,10 +51,8 @@ namespace Jobs.Api
             return new AutofacServiceProvider(ApplicationContainer);
         }
 
-        }
-
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime lifetime)
         {
             if (env.IsDevelopment())
             {
@@ -60,6 +60,10 @@ namespace Jobs.Api
             }
 
             app.UseMvc();
+
+            var bus = ApplicationContainer.Resolve<IBusControl>();
+            var busHandle = TaskUtil.Await(() => bus.StartAsync());
+            lifetime.ApplicationStopping.Register(() => busHandle.Stop());
         }
     }
 }

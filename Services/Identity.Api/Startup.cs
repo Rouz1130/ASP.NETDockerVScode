@@ -25,22 +25,26 @@ namespace Identity.Api
         {
             services.AddMvc();
 
-
-             //By connecting here we are making sure that our service
+            //By connecting here we are making sure that our service
             //cannot start until redis is ready. This might slow down startup,
             //but given that there is a delay on resolving the ip address
             //and then creating the connection it seems reasonable to move
             //that cost to startup instead of having the first request pay the
             //penalty.
-
-            services.AddSingelton(sp=> {
-
+            services.AddSingleton(sp =>
+            {
                 var configuration = new ConfigurationOptions {ResolveDns = true};
-                configuration.EndPoints.Add(Configuration['RedisHost']);
-                return ConnectionMultiplexeer.Connect(configuration);
+                configuration.EndPoints.Add(Configuration["RedisHost"]);
+                return ConnectionMultiplexer.Connect(configuration);
             });
 
-                 builder.Register(context =>
+            services.AddTransient<IIdentityRepository, IdentityRepository>();
+            var builder = new ContainerBuilder();
+
+            // register a specific consumer
+            builder.RegisterType<ApplicantAppliedEventConsumer>();
+
+            builder.Register(context =>
                 {
                     var busControl = Bus.Factory.CreateUsingRabbitMq(cfg =>
                     {
@@ -69,9 +73,8 @@ namespace Identity.Api
             return new AutofacServiceProvider(ApplicationContainer);
         }
 
-        
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public async void Configure(IApplicationBuilder app, IHostingEnvironment env, IServiceProvider serviceProvider, IApplicationLifetime lifetime)
         {
             if (env.IsDevelopment())
             {
@@ -79,6 +82,15 @@ namespace Identity.Api
             }
 
             app.UseMvc();
+
+            // stash an applicant's user data in redis for test purposes...this would simulate establishing auth/session in the real world
+            var identityRepository=serviceProvider.GetService<IIdentityRepository>();
+            await identityRepository.UpdateUserAsync(new User {Id = "1", Email = "josh903902@gmail.com",Name = "Josh Dillinger"});
+
+            var bus = ApplicationContainer.Resolve<IBusControl>();
+            var busHandle = TaskUtil.Await(() => bus.StartAsync());
+            lifetime.ApplicationStopping.Register(() => busHandle.Stop());
         }
     }
 }
+
