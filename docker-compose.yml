@@ -2,6 +2,21 @@ version: '3'
 
 services:
 
+  webmvc:
+    image: web 
+    build:
+      context: ./web
+      dockerfile: Dockerfile.debug
+    ports: 
+    - "8080:80"
+    volumes: 
+      - ./web/bin/pub/:/app
+    container_name: web
+    depends_on:
+      - applicants.api
+      - identity.api
+      - jobs.api
+
   applicants.api:
     image: applicants.api       
     build:
