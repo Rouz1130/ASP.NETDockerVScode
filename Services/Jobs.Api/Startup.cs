@@ -24,6 +24,31 @@ namespace Jobs.Api
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+
+                builder.Register(c =>
+                {
+                    return Bus.Factory.CreateUsingRabbitMq(sbc =>
+                    {
+                        sbc.Host("rabbitmq", "/", h =>
+                        {
+                            h.Username("guest");
+                            h.Password("guest");
+                        });
+
+                        sbc.ExchangeType = ExchangeType.Fanout;
+                    });
+                })
+                .As<IBusControl>()
+                .As<IBus>()
+                .As<IPublishEndpoint>()
+                .SingleInstance();
+
+            builder.Populate(services);
+            ApplicationContainer = builder.Build();
+
+            return new AutofacServiceProvider(ApplicationContainer);
+        }
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
