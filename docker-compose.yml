@@ -18,8 +18,8 @@ services:
 
   identity.api:
     image: identity.api
-  # environment:
-  #     - RedisHost=user.data:6379
+  environment:
+      - RedisHost=user.data:6379
     build:
       context: ./services/identity.api
       dockerfile: Dockerfile.debug
