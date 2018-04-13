@@ -12,9 +12,14 @@ services:
     volumes: 
       - ./services/applicants.api/bin/pub/:/app
     container_name: applicants.api
+    depends_on:
+      - sql.data
+      - rabbitmq
 
   identity.api:
     image: identity.api
+  # environment:
+  #     - RedisHost=user.data:6379
     build:
       context: ./services/identity.api
       dockerfile: Dockerfile.debug
@@ -22,7 +27,9 @@ services:
     - "8084:80"
     volumes: 
       - ./services/identity.api/bin/pub/:/app
-    container_name: identity.api     
+    container_name: identity.api
+    depends_on:
+      - user.data     
 
   jobs.api:
     image: jobs.api
@@ -33,7 +40,10 @@ services:
     - "8083:80"
     volumes: 
       - ./services/jobs.api/bin/pub/:/app
-    container_name: jobs.api   
+    container_name: jobs.api  
+     depends_on:
+      - sql.data
+      - rabbitmq 
 
     sql.data:
    image: mssql-linux
@@ -43,3 +53,6 @@ services:
    ports:
       - "5433:1433"
    container_name: mssql-linux
+
+   user.data:
+    image: redis
